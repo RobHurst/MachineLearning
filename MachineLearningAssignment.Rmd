@@ -1,0 +1,127 @@
+---
+title: "Machine Learning Assignment"
+author: "Rob Hurst"
+date: "27 July 2016"
+output: html_document
+---
+Background
+
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset).
+
+```{r}
+# Libraries
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(RColorBrewer)
+library(randomForest)
+library(RCurl)
+
+
+
+```
+
+
+
+Get the data
+
+
+```{r}
+setwd("/Users/robhurst/MachineLearning")
+
+trainUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+
+
+trainingOrg <- read.csv(url(trainUrl), na.strings=c("NA","#DIV/0!",""))
+testingOrg = read.csv(url(testUrl), na.strings=c("", "NA", "NULL"))
+
+dim(trainingOrg)
+
+
+
+
+
+
+
+```
+
+
+
+```{r}
+
+
+# Remove columns with too many NAs
+
+missingData <-  is.na(trainingOrg)
+omitColumns = which(colSums(missingData) > 1000)
+trainingOrg <- trainingOrg[,-omitColumns]
+dim(trainingOrg)
+
+
+```
+
+
+Create Test and Train Samples. 
+Set the seed for the sake of reproducability.
+```{r}
+
+set.seed(1234)
+inTrain <- createDataPartition(y=trainingOrg$classe, p=0.6, list=FALSE)
+myTraining <- trainingOrg[inTrain, ]; myTesting <- trainingOrg[-inTrain, ]
+dim(myTraining); dim(myTesting)
+
+```
+
+###
+Training the Predictor.
+We will use the randomForest function (in the randomForest package) to fit the predictor to the training set. In the computer used for this analysis (see the Notes section below for details) the default number of trees (500) gives a reasonable tradeoff between training time and accuracy. In more powerful machines that number can be increased for (slightly) better predictions.
+
+
+```{r}
+
+time1 = proc.time()
+(randForest = randomForest(classe~., data=myTraining, ntree = 500))
+
+
+```
+
+###
+Applying the Model to the Testing Subsample.
+After training the predictor we use it on the testing subsample we constructed before, to get an estimate of its out of sample error.
+
+```{r}
+
+predictionTesting = predict(randForest, newdata = myTesting)
+
+
+
+```
+
+
+
+
+
+
+
+The error estimate can be obtained with the confusionMatrix function of the caret package:
+
+
+```{r}
+
+confusionMatrix(predictionTesting, myTesting$classe)
+
+
+
+```
+
+
+Graph the impact of the top features
+
+```{r}
+
+varImpPlot(randForest)
+
+
+
+```
